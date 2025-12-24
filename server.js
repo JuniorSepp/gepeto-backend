@@ -1,57 +1,65 @@
 import express from "express";
 import cors from "cors";
+import dotenv from "dotenv";
 import OpenAI from "openai";
+
+dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
-app.get("/", (req, res) => {
-  res.send("Gepeto Backend Online 🚀");
-});
-
-app.post("/gerar", async (req, res) => {
+/* ================================
+   ROTA PRINCIPAL DO GEPETO
+================================ */
+app.post("/roteiro", async (req, res) => {
   try {
-    const { prompt, modo } = req.body;
+    const { tema, plataforma, estilo, duracao } = req.body;
 
-    const promptFinal = `
-Você é o GEPETO, um agente brasileiro especialista em criar
-5 roteiros diferentes para vídeos Shorts (até 58s).
+    if (!tema || !plataforma || !estilo || !duracao) {
+      return res.status(400).json({
+        erro: "Dados incompletos",
+      });
+    }
 
-Tema: ${prompt}
-Modo: ${modo || "auto"}
+    const prompt = `
+Crie um roteiro EXTREMAMENTE VIRAL para ${plataforma}.
+Tema: ${tema}
+Estilo: ${estilo}
+Duração: ${duracao}
 
-Formato:
-TÍTULO:
-ROTEIRO:
-Cena 1 – Gancho
-Cena 2 – Desenvolvimento
-Cena 3 – Reflexão
-NARRAÇÃO:
+Regras:
+- Comece com gancho forte em 3 segundos
+- Linguagem simples
+- Final impactante
+- Texto contínuo, sem tópicos
 `;
 
-    const response = await client.responses.create({
+    const resposta = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
-      input: promptFinal
+      messages: [
+        { role: "system", content: "Você é um criador profissional de roteiros virais." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.8
     });
 
     res.json({
-      texto: response.output_text || "Sem resposta da IA."
+      roteiro: resposta.choices[0].message.content
     });
 
-  } catch (error) {
-    console.error("ERRO OPENAI:", error);
-    res.status(500).json({ texto: "Erro ao conectar com a IA." });
+  } catch (erro) {
+    res.status(500).json({
+      erro: "Erro ao gerar roteiro",
+      detalhe: erro.message
+    });
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log("Gepeto Backend Online 🚀 Porta:", PORT);
+app.listen(3000, () => {
+  console.log("🔥 Gepeto backend rodando em http://localhost:3000");
 });
-     
-  
